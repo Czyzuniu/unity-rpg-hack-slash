@@ -1,11 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Combat : MonoBehaviour
 {
 
-
+    
     public GameObject weapon;
     public int comboStep = 0;
     public float comboTimeWindow = 1.5f;
@@ -22,13 +23,13 @@ public class Combat : MonoBehaviour
     public GameObject hand;
     public GameObject back;
     private PlayerMovement playerMovement;
-
+    public List<GameObject> colliders;
+    public bool canAttack;
 
     void Start() {
         animator = GetComponent<Animator>();
         comboTimer = 0f;
         playerMovement = GetComponent<PlayerMovement>();
-        DisableWeaponCollider();
     }
 
 
@@ -37,6 +38,13 @@ public class Combat : MonoBehaviour
         weapon.transform.SetParent(hand.transform);
         weapon.transform.position = hand.transform.position;
         weapon.transform.rotation = hand.transform.rotation;
+        canAttack = true;
+    }
+
+    public void ToggleWeaponColliders(bool toggle) {
+        foreach (GameObject collider in colliders) {
+            collider.GetComponent<BoxCollider>().enabled = toggle;
+        }
     }
 
     public void Sheath() {
@@ -44,6 +52,8 @@ public class Combat : MonoBehaviour
         weapon.transform.SetParent(back.transform);
         weapon.transform.position = back.transform.position;
         weapon.transform.rotation = Quaternion.identity;
+        canAttack = false;
+
     }
 
     public void Hit() {
@@ -61,9 +71,7 @@ public class Combat : MonoBehaviour
     void Update()
     {
         comboTimer += Time.deltaTime;
-        if (Input.GetMouseButtonDown(0) && CanAttack()) {
-            EnableWeaponCollider();
-            nextTimeToAttack = Time.time + 0.5f;
+        if (Input.GetMouseButtonDown(0) && canAttack) {
             animator.SetTrigger("Attack");
 
             if (comboStep > maxCombo) {
@@ -84,8 +92,9 @@ public class Combat : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.F)) {
             if (!isWeaponFlying) {
-                ThrowWeapon();
-            } else {
+                animator.SetTrigger("Throw");
+            }
+            else {
                 BringItBackBoy();
             }
         }
@@ -93,7 +102,7 @@ public class Combat : MonoBehaviour
         if (isWeaponFlying) {
             weapon.transform.Rotate(new Vector3(0, 0, -500) * Time.deltaTime);
             //weapon.transform.position = Vector3.Lerp(weapon.transform.position, weapon.transform.position, Time.deltaTime * 10);
-            weapon.transform.localPosition += transform.forward * Time.deltaTime * 75;
+            weapon.transform.localPosition += Camera.main.transform.forward * Time.deltaTime * 16;
         }
         else if (!isWeaponFlying && !weapon.transform.parent) {
             weapon.transform.Rotate(new Vector3(0, 0, -500) * Time.deltaTime);
@@ -106,7 +115,6 @@ public class Combat : MonoBehaviour
                 weapon.transform.localRotation = Quaternion.identity;
             }
         }
-
 
         if (Input.GetKeyDown(KeyCode.Z)) {
             inCombatStance = !inCombatStance;
@@ -124,24 +132,13 @@ public class Combat : MonoBehaviour
         playerMovement.canRun = !inCombatStance;
     }
 
-    public void EnableWeaponCollider() {
-        weapon.GetComponent<BoxCollider>().enabled = true;
-    }
-
-    public void DisableWeaponCollider() {
-        weapon.GetComponent<BoxCollider>().enabled = false;
-    }
-
     private void BringItBackBoy() {
         isWeaponFlying = false;
     }
 
-    private void ThrowWeapon() {
+    public void ThrowWeapon() {
+        weapon.transform.localRotation = Quaternion.Euler(0, 180, 180);
         isWeaponFlying = true;
         weapon.transform.parent = null;
-    }
-
-    private bool CanAttack() {
-        return Time.time >= nextTimeToAttack;
     }
 }

@@ -6,16 +6,16 @@ public class PlayerMovement : MonoBehaviour
 {
     public float GRAVITY = -9.81f;
     public float SPEED = 4.0f;
+    public float COMBAT_SPEED = 3.0f;
     public float JUMP_FORCE = 3.0f;
     public float ROTATESPEED = 2.0f;
-    public float SPEED_BOOST = 3.0f;
-    public float SPEED_CAP = 25.0f;
     private float baseSpeed;
 
     public bool canRun = true;
 
     private CharacterController controller;
     private Vector3 velocity = Vector3.zero;
+    private Combat combatController;
 
     Animator animator;
     // Start is called before the first frame update
@@ -24,6 +24,7 @@ public class PlayerMovement : MonoBehaviour
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         baseSpeed = SPEED;
+        combatController = GetComponent<Combat>();
     }
 
     // Update is called once per frame
@@ -33,12 +34,10 @@ public class PlayerMovement : MonoBehaviour
         float vertical = Input.GetAxis("Vertical");
 
         Vector3 rotation = new Vector3(0, ROTATESPEED * horizontal, 0);
-        Vector3 move = new Vector3(0, velocity.y, vertical);
-        move = this.transform.TransformDirection(move);
 
-        controller.Move(move * Time.deltaTime * SPEED);
-        this.transform.Rotate(rotation);
+        velocity.z = vertical;
 
+        velocity = new Vector3(0, velocity.y, velocity.z);
 
         if (!controller.isGrounded) {
             velocity.y += GRAVITY * Time.deltaTime;
@@ -48,16 +47,19 @@ public class PlayerMovement : MonoBehaviour
                 velocity.y += JUMP_FORCE;
                 animator.SetTrigger("Jump");
             }
-            if (Input.GetKey(KeyCode.LeftShift) && vertical > 0 && canRun) {
-                animator.SetBool("isRunToggled", true);
-                if (SPEED < SPEED_CAP) {
-                    SPEED += SPEED_BOOST;
-                } 
-            } else {
-                SPEED = baseSpeed;
-                animator.SetBool("isRunToggled", false);
-            }
         }
+
+        if (Input.GetKeyDown(KeyCode.X)) {
+            animator.SetTrigger("RollForward");
+        }
+
         animator.SetFloat("Forward", vertical);
+
+        velocity = this.transform.TransformDirection(velocity);
+
+        controller.Move(velocity * Time.deltaTime * (combatController.inCombatStance ? COMBAT_SPEED : SPEED));
+        this.transform.Rotate(rotation);
     }
+
+
 }

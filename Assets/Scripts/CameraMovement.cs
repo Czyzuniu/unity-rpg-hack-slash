@@ -4,30 +4,61 @@ using UnityEngine;
 
 public class CameraMovement : MonoBehaviour
 {
-    public Transform target;
-    public float smoothFactor = 0.5f;
+
+    public GameObject crosshairComponent;
+    public float mouseSensitivity = 100f;
+    public Transform playerBody;
+    public float smoothFactor = 10f;
     public float rotationSpeed = 5.0f;
+    public Transform zoomPosition;
+    public Vector3 startingPos;
     private Vector3 offset;
     private Quaternion startingRotation;
+    private float xRotation = 0f;
+    private bool inZoom;
+
     // Start is called before the first frame update
     void Start()
     {   
-        offset = transform.position - target.position;
-        startingRotation = transform.rotation;
+        startingRotation = transform.localRotation;
+        startingPos = transform.localPosition;
+        ToggleCrosshair(false);
     }
 
-    // Update is called once per frame
+    void Update() {
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90, 90);
+
+        if (inZoom) {
+            transform.localRotation = Quaternion.Euler(xRotation, 0, 0);
+            playerBody.Rotate(Vector3.up * mouseX);
+        }
+    }
+
+    void ToggleCrosshair(bool enable) {
+        SimpleCrosshair crosshair = crosshairComponent.GetComponent<SimpleCrosshair>();
+        if (crosshairComponent) {
+            crosshairComponent.SetActive(enable);
+        }
+    }
+
     void LateUpdate() {
         if (Input.GetMouseButton(1)) {
-            Quaternion camTurnAngleX = Quaternion.AngleAxis(Input.GetAxis("Mouse X") * rotationSpeed, Vector3.up);
-            Quaternion camTurnAngleY = Quaternion.AngleAxis(Input.GetAxis("Mouse Y") * rotationSpeed, Vector3.left);
-            offset = camTurnAngleX * camTurnAngleY * offset;
-            Vector3 newPos = target.position + offset;
-            transform.position = Vector3.Slerp(transform.position, newPos, smoothFactor);
+            Cursor.lockState = CursorLockMode.Locked;
+            inZoom = true;
+            transform.localPosition = Vector3.Lerp(transform.localPosition, zoomPosition.localPosition, smoothFactor * Time.deltaTime);
+            ToggleCrosshair(true);
         }
-        // Vector3 zoomPos = transform.position * Input.GetAxis("Mouse ScrollWheel") * 5;
-        //transform.position = Vector3.Slerp(transform.position, zoomPos, smoothFactor);
-        transform.LookAt(target);
+        if (Input.GetMouseButtonUp(1)) {
+            inZoom = false;
+            Cursor.lockState = CursorLockMode.None;
+            transform.localPosition = startingPos;
+            transform.localRotation = startingRotation;
+            ToggleCrosshair(false);
+        }
     }
 }
 
