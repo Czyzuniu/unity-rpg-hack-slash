@@ -5,13 +5,11 @@ using UnityEngine;
 
 public class Combat : MonoBehaviour
 {
-
-    
+    public PlayerInputActions inputActions;
     public GameObject weapon;
     public int comboStep = 0;
     public float comboTimeWindow = 1.5f;
     public LayerMask enemyLayers;
-
 
     private Animator animator;
     private float nextTimeToAttack = 0;
@@ -25,13 +23,56 @@ public class Combat : MonoBehaviour
     private PlayerMovement playerMovement;
     public List<GameObject> colliders;
     public bool canAttack;
+    private Vector3 throwDirection;
+
+    void Awake() {
+        inputActions = new PlayerInputActions();
+        inputActions.PlayerControls.BattleStance.performed += ctx => ToggleBattleStance();
+        inputActions.PlayerControls.StandardAttack.performed += ctx => StandardAttack();
+        inputActions.PlayerControls.LightAttack.performed += ctx => LightAttack();
+        inputActions.PlayerControls.HardAttack.performed += ctx => HardAttack();
+    }
 
     void Start() {
         animator = GetComponent<Animator>();
         comboTimer = 0f;
         playerMovement = GetComponent<PlayerMovement>();
+        //ToggleKinematicRigidBody(true);
+        Cursor.lockState = CursorLockMode.Locked;
+        ToggleWeaponColliders(false);
     }
 
+    public void StandardAttack() {
+        MakeAttack(0);
+    }
+
+    public void MakeAttack(int step) {
+        if (inCombatStance && canAttack) {
+            animator.SetTrigger("Attack");
+            animator.SetInteger("Step", step);
+        }
+    }
+
+
+    public void LightAttack() {
+        MakeAttack(1);
+    }
+
+    public void HardAttack() {
+        MakeAttack(2);
+    }
+
+    public void ToggleBattleStance() {
+        inCombatStance = !inCombatStance;
+        animator.SetBool("InBattleStance", inCombatStance);
+        if (inCombatStance) {
+            UnSheath();
+            animator.SetTrigger("InCombat");
+        } else {
+            Sheath();
+            animator.ResetTrigger("InCombat");
+        }
+    }
 
     public void UnSheath() {
         animator.SetTrigger("UnSheath");
@@ -45,6 +86,12 @@ public class Combat : MonoBehaviour
         foreach (GameObject collider in colliders) {
             collider.GetComponent<BoxCollider>().enabled = toggle;
         }
+    }
+
+    public void ToggleKinematicRigidBody(bool toggle) {
+        Rigidbody rb = weapon.GetComponent<Rigidbody>();
+        rb.isKinematic = toggle;
+        rb.useGravity = !toggle;
     }
 
     public void Sheath() {
@@ -67,42 +114,58 @@ public class Combat : MonoBehaviour
         //}
     }
 
+    //combo stuff might reuse
+    //comboTimer += Time.deltaTime;
+    //    if (Input.GetMouseButtonDown(0) && canAttack) {
+    //        animator.SetTrigger("Attack");
+
+    //        if (comboStep > maxCombo) {
+    //            comboStep = 0;
+    //        }
+
+    //        if (comboTimer <= comboTimeWindow) {
+    //            comboStep++;
+    //        }
+    //        else {
+    //            comboStep = 0;
+    //            comboTimer = 0f;
+    //        }
+    //        animator.SetInteger("Step", comboStep);
+    //        comboTimer = 0f;
+
+    //    }
+
     // Update is called once per frame
     void Update()
     {
-        comboTimer += Time.deltaTime;
-        if (Input.GetMouseButtonDown(0) && canAttack) {
-            animator.SetTrigger("Attack");
 
-            if (comboStep > maxCombo) {
-                comboStep = 0;
-            }
 
-            if (comboTimer <= comboTimeWindow) {
-                comboStep++;
-            }
-            else {
-                comboStep = 0;
-                comboTimer = 0f;
-            }
-            animator.SetInteger("Step", comboStep);
-            comboTimer = 0f;
+        //if (Input.GetMouseButtonDown(1)) {
+        //    if (!isWeaponFlying) {
+        //        animator.SetTrigger("Throw");
+        //    }
+        //    else {
+        //        BringItBackBoy();
+        //    }
+        //}
 
-        } 
+    }
 
-        if (Input.GetKeyDown(KeyCode.F)) {
-            if (!isWeaponFlying) {
-                animator.SetTrigger("Throw");
-            }
-            else {
-                BringItBackBoy();
-            }
+    private void ThrowingLogic() {
+        if (Input.GetMouseButtonDown(1)) {
+            animator.SetTrigger("PreThrow");
+        }
+
+        if (Input.GetMouseButtonUp(1)) {
+            throwDirection = Camera.main.transform.forward;
+            animator.ResetTrigger("PreThrow");
         }
 
         if (isWeaponFlying) {
             weapon.transform.Rotate(new Vector3(0, 0, -500) * Time.deltaTime);
-            //weapon.transform.position = Vector3.Lerp(weapon.transform.position, weapon.transform.position, Time.deltaTime * 10);
-            weapon.transform.localPosition += Camera.main.transform.forward * Time.deltaTime * 16;
+            weapon.transform.position += throwDirection * Time.deltaTime * 1;
+            //velocity.y += GRAVITY * Time.deltaTime;
+
         }
         else if (!isWeaponFlying && !weapon.transform.parent) {
             weapon.transform.Rotate(new Vector3(0, 0, -500) * Time.deltaTime);
@@ -115,30 +178,23 @@ public class Combat : MonoBehaviour
                 weapon.transform.localRotation = Quaternion.identity;
             }
         }
-
-        if (Input.GetKeyDown(KeyCode.Z)) {
-            inCombatStance = !inCombatStance;
-            animator.SetBool("InBattleStance", inCombatStance);
-            if (inCombatStance) {
-                UnSheath();
-                animator.SetTrigger("InCombat");
-            }
-            else {
-                Sheath();
-                animator.ResetTrigger("InCombat");
-            }
-        }
-
-        playerMovement.canRun = !inCombatStance;
     }
 
     private void BringItBackBoy() {
         isWeaponFlying = false;
+        ToggleKinematicRigidBody(true);
     }
 
     public void ThrowWeapon() {
-        weapon.transform.localRotation = Quaternion.Euler(0, 180, 180);
-        isWeaponFlying = true;
         weapon.transform.parent = null;
+        isWeaponFlying = true;
+    }
+
+    private void OnEnable() {
+        inputActions.Enable();
+    }
+
+    private void OnDisable() {
+        inputActions.Disable();
     }
 }
