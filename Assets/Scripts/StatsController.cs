@@ -12,11 +12,13 @@ public class StatsController : MonoBehaviour
     public float totalMana;
     public float armor;
     private bool isDead;
+    private Animator animator;
 
 
     public void Start() {
         health = totalHealth;
         mana = totalMana;
+        animator = GetComponent<Animator>();
     }
 
 
@@ -26,5 +28,9 @@ public class StatsController : MonoBehaviour
 
     public void MinusHealth(float health) {
         this.health -= health;
+    }
+
+    public void Die() {
+        animator.SetTrigger("Dead");
     }
 }

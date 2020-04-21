@@ -16,7 +16,7 @@ public class MobUI : MonoBehaviour
 
     void Awake() {
         stats = GetComponentInParent<StatsController>();
-        mobName.text = "Baldur";
+        mobName.text = "Bezi";
     }
 
     // Update is called once per frame
